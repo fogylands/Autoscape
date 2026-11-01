@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8">
+  <title>Raser</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <div class="layout">
+    <div class="camera">
+      <div class="stage">
+        <video id="video" autoplay playsinline width="640" height="480"></video>
+        <canvas id="canvas" width="640" height="480"></canvas>
+      </div>
+
+      <button type="button" id="overlay-toggle" class="overlay-toggle" aria-controls="color-tool" aria-expanded="true" title="Ein-/ausblenden (H)">Einstellungen</button>
+      <aside id="color-tool" class="color-tool">
+        <details class="panel" open>
+          <summary class="panel__title">Kamera</summary>
+          <select id="camera-select" class="camera-select" aria-label="Kamera auswählen" disabled>
+            <option>Noch keine Kamera</option>
+          </select>
+          <div id="camera-status" class="panel__status">OpenCV wird geladen …</div>
+        </details>
+
+        <details class="panel" open>
+          <summary class="panel__title">Spielfeld</summary>
+          <div class="panel__actions">
+            <button type="button" id="play-area-calibrate">8 Punkte setzen</button>
+            <button type="button" id="play-area-reset">Zurücksetzen</button>
+          </div>
+          <div id="play-area-status" class="panel__status">Nicht kalibriert – ganzes Bild</div>
+        </details>
+
+        <details class="panel" open>
+          <summary class="panel__title">Farben</summary>
+          <div id="color-slots" class="color-slots"></div>
+          <div class="panel__actions">
+            <button type="button" id="color-reset">Standardwerte</button>
+          </div>
+        </details>
+
+        <details class="panel" open>
+          <summary class="panel__title">Erkennung</summary>
+          <label class="color-tool__field">
+            <span>Farbton-Toleranz</span>
+            <input type="range" id="hue-tol" min="2" max="25" value="10" />
+            <output id="hue-tol-val">10</output>
+          </label>
+          <label class="color-tool__field">
+            <span>Min. Sättigung</span>
+            <input type="range" id="sat-min" min="0" max="255" value="80" />
+            <output id="sat-min-val">80</output>
+          </label>
+          <label class="color-tool__field">
+            <span>Min. Helligkeit</span>
+            <input type="range" id="val-min" min="0" max="255" value="80" />
+            <output id="val-min-val">80</output>
+          </label>
+        </details>
+
+        <details class="panel" open>
+          <summary class="panel__title">Licht</summary>
+          <label class="toggle"><input type="checkbox" id="light-correction" /> Automatisch ausgleichen</label>
+          <div id="light-status" class="panel__status">Aus – Rohbild der Kamera</div>
+        </details>
+
+        <details class="panel" open>
+          <summary class="panel__title">Ton</summary>
+          <label class="toggle"><input type="checkbox" id="sfx-enabled" checked /> Sound</label>
+          <label class="toggle"><input type="checkbox" id="music-enabled" checked /> Musik</label>
+        </details>
+
+        <details class="panel" open>
+          <summary class="panel__title">Screens</summary>
+          <div id="screen-buttons" class="panel__actions"></div>
+        </details>
+
+        <details class="panel" open>
+          <summary class="panel__title">Abstände</summary>
+          <div id="distance-results" class="panel__status">Warte auf Erkennung …</div>
+        </details>
+      </aside>
+    </div>
+
+    <div class="poster start" >
+      <div class="title">START</div>
+      <div class="info">
+        <span class="start-instruction start-instruction--bulle">FANG DEN RASER</span>
+        <span class="start-instruction start-instruction--raser">HAU DEM BULLEN AB</span>
+        <div class="start-detection" aria-label="Erkennungsstatus der Autos">
+          <span class="start-detection__item bulle-info" id="bulle-detection">
+            <span class="start-detection__name">BULLE</span>
+            <span class="start-detection__state" aria-live="polite">SUCHE</span>
+          </span>
+          <span class="start-detection__item raser-info" id="raser-detection">
+            <span class="start-detection__name">RASER</span>
+            <span class="start-detection__state" aria-live="polite">SUCHE</span>
+          </span>
+        </div>
+      </div>
+
+      <div class="race-data">
+        <section class="bulle racer-data" aria-label="Daten Bulle">
+          <div class="racer-lives" data-racer="bulle"><span class="racer-lives__left"></span><span class="racer-lives__lost"></span></div>
+          <div class="racer-points" data-racer="bulle">0 PKT</div>
+          <div class="positionBulle"></div>
+          <div class="speedBulle"></div>
+        </section>
+        <section class="raser racer-data" aria-label="Daten Raser">
+          <div class="racer-lives" data-racer="raser"><span class="racer-lives__left"></span><span class="racer-lives__lost"></span></div>
+          <div class="racer-points" data-racer="raser">0 PKT</div>
+          <div class="positionRaser"></div>
+          <div class="speedRaser"></div>
+        </section>
+      </div>
+
+      <div class="race-map">
+        <div class="race-map__grid" aria-hidden="true"></div>
+        <div class="hit">DU GEHST KAPUTT!</div>
+      </div>
+      <div class="distance"></div>
+      <!-- Two sections: the log on top, the car radio's current song or talk underneath -->
+      <div class="race-sidebar">
+        <div class="race-event-log" role="log" aria-label="Rennprotokoll" aria-live="polite" aria-relevant="additions"></div>
+        <section class="race-radio" aria-label="Radio">
+          <span class="race-radio__label">RADIO</span>
+          <!-- The copy only shows while a long title scrolls, so the loop has no gap -->
+          <span class="race-radio__title"><span class="race-radio__track"><span class="race-radio__text">—</span><span class="race-radio__copy" aria-hidden="true">—</span></span></span>
+        </section>
+      </div>
+      <div class="race-status">
+        <div class="race-score" aria-label="Punkte Bulle zu Raser" aria-live="polite"><span data-racer="bulle">0</span>:<span data-racer="raser">0</span></div>
+        <div class="race-timer" role="timer" aria-label="Rennzeit">60s</div>
+      </div>
+      <!-- Lines are picked and typed by showReadyScreen in main.js -->
+      <div class="ready-message" role="status" aria-live="polite"></div>
+      <div class="countdownNumber" role="status" aria-live="polite" aria-atomic="true"><span class="countdownNumber__value">3</span></div>
+      <div class="ending-screen" role="status" aria-live="assertive">
+        <span class="ending-eyebrow"></span>
+        <span class="ending-title"></span>
+        <span class="ending-detail"></span>
+        <span class="ending-time"></span>
+        <span class="ending-restart"></span>
+        <span class="ending-racer bulle-info" data-racer="bulle"></span>
+        <span class="ending-racer raser-info" data-racer="raser"></span>
+        <button type="button" class="ending-again">NOCHMAL SPIELEN</button>
+      </div>
+    </div>
+
+
+
+  </div>
+
+
+
+  <div id="status">OpenCV wird geladen …</div>
+  <script async src="https://docs.opencv.org/4.x/opencv.js" onload="onOpenCvReady();"></script>
+  <script src="sfx.js"></script>
+  <script src="main.js"></script>
+  <script src="typo.js"></script>
+</body>
+</html>
